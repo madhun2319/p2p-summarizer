@@ -1,5 +1,5 @@
-# Ponytail: Weekly execution script for Windows Task Scheduler
-$P2P_DIR = "H:\p2p_summarizer"
+# ponytail: Resolve script location dynamically instead of hardcoding paths.
+$P2P_DIR = $PSScriptRoot
 Set-Location $P2P_DIR
 
 Write-Host "🚀 [1/2] Fetching & Triaging last 7 days of PDBs (Llama 3.1 8B)..." -ForegroundColor Cyan

@@ -35,12 +35,12 @@ Do the following:
    | Key Discovery | ... |
 """
     try:
+        # ponytail: timeout is set on the client, not per-call. Removed invalid kwarg.
         response = client.chat.completions.create(
             model="meta/llama-3.1-70b-instruct",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=450,
-            temperature=0.3,
-            timeout=30
+            temperature=0.3
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -91,24 +91,26 @@ def main():
         print("ℹ️ No triaged items found.", flush=True)
         sys.exit(0)
         
-    api_key = os.environ.get("NVIDIA_API_KEY")
+    api_key = os.environ.get("NVIDIA_API_KEY") or os.environ.get("NVIDIA_NIM_API_KEY")
     if not api_key:
-        print("❌ Error: NVIDIA_API_KEY not set.", flush=True)
+        print("❌ Error: Set NVIDIA_API_KEY or NVIDIA_NIM_API_KEY in your environment.", flush=True)
         sys.exit(1)
         
     from openai import OpenAI
-    client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=api_key)
+    # ponytail: Set timeout on the client constructor where the SDK actually supports it.
+    client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=api_key, timeout=30.0)
     
-    print(f"📰 Generating Top 5 Newsletter Issue using Llama 3.1 70B...\n", flush=True)
+    print(f"📰 Generating Top {len(top_items)} Newsletter Issue using Llama 3.1 70B...\n", flush=True)
     summaries = []
     
     for idx, item in enumerate(top_items, 1):
-        print(f"✍️ Summarizing Top {idx}/5 ({item['pdb_id']})...", flush=True)
+        print(f"✍️ Summarizing Top {idx}/{len(top_items)} ({item['pdb_id']})...", flush=True)
         summary = generate_70b_summary(client, item)
         summaries.append(summary)
-        build_newsletter(summaries)
-        
-    print("\n🎉 Top 5 Newsletter issue complete!", flush=True)
+
+    # ponytail: Build once at the end, not inside the loop.
+    md_file = build_newsletter(summaries)
+    print(f"\n🎉 Newsletter issue complete! ({md_file})", flush=True)
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 # Setup a Windows Scheduled Task (Cron job) to run every Monday at 8:00 AM
 $TaskName = "BioPulse_Weekly_Cron"
-$ScriptPath = "H:\p2p_summarizer\run_weekly.ps1"
+$ScriptPath = Join-Path $PSScriptRoot "run_weekly.ps1"
 
 $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$ScriptPath`""
 $Trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8:00AM

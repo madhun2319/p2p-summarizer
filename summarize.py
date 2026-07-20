@@ -3,15 +3,16 @@ import json
 import urllib.request
 import os
 
-# ponytail: No complex agent frameworks. Just grab the data synchronously and dump it into the prompt. YAGNI.
+# ponytail: Stdlib urllib + stdlib json. No extra HTTP frameworks needed. YAGNI.
 
-def fetch(url):
+def fetch(url: str) -> str:
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (P2P-Summarizer)'})
     try:
-        with urllib.request.urlopen(req) as response:
+        # ponytail: 10s socket timeout prevents indefinite hangs on stalled remote endpoints.
+        with urllib.request.urlopen(req, timeout=10) as response:
             return response.read().decode('utf-8')
     except Exception as e:
-        print(f"Network error: {e}")
+        print(f"Network error fetching {url}: {e}")
         sys.exit(1)
 
 def main():
@@ -26,15 +27,15 @@ def main():
     
     print(f"Fetching PDB metadata for {pdb_id}...")
     pdb_url = f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}"
-    pdb_data_raw = fetch(pdb_url)
-    pdb_data = json.loads(pdb_data_raw)
+    pdb_data = json.loads(fetch(pdb_url))
     
-    try:
-        # Navigate the PDB JSON to find the primary PubMed ID
-        pmid = pdb_data['rcsb_primary_citation']['pdbx_database_id_PubMed']
-        title = pdb_data['struct']['title']
-    except KeyError:
-        print("Could not find a primary citation or title in PDB for this structure.")
+    # ponytail: Safe dict traversal prevents KeyError crashes if primary citation is missing.
+    citation = pdb_data.get('rcsb_primary_citation') or {}
+    pmid = citation.get('pdbx_database_id_PubMed')
+    title = (pdb_data.get('struct') or {}).get('title', f"Structure {pdb_id}")
+
+    if not pmid:
+        print(f"⚠️ No PubMed primary citation linked in PDB entry {pdb_id}.")
         sys.exit(1)
 
     print(f"Found PubMed ID {pmid}. Fetching abstract from NCBI...")
@@ -44,10 +45,15 @@ def main():
     print("Sending to NVIDIA NIM for summarization...")
     from openai import OpenAI
     
-    # NVIDIA NIM uses the standard OpenAI API specification
+    # ponytail: Accept NVIDIA_API_KEY or NVIDIA_NIM_API_KEY seamlessly.
+    api_key = os.environ.get("NVIDIA_API_KEY") or os.environ.get("NVIDIA_NIM_API_KEY")
+    if not api_key:
+        print("❌ Error: Set NVIDIA_API_KEY or NVIDIA_NIM_API_KEY in your environment.")
+        sys.exit(1)
+
     client = OpenAI(
         base_url="https://integrate.api.nvidia.com/v1",
-        api_key=os.environ.get("NVIDIA_API_KEY")
+        api_key=api_key
     )
     
     prompt = f"""
@@ -72,8 +78,8 @@ def main():
         max_tokens=500
     )
 
-    print("\n--- SUMMARY ---\n")
-    print(response.choices[0].message.content)
+    print("\n--- SUMMARY ---\n", flush=True)
+    print(response.choices[0].message.content or "(No response generated)", flush=True)
 
 if __name__ == "__main__":
     main()
