@@ -1,0 +1,38 @@
+name: 🧬 BioPulse AI Weekly Pipeline
+
+on:
+  schedule:
+    # Runs every Monday at 08:00 AM UTC in the cloud
+    - cron: '0 8 * * 1'
+  workflow_dispatch: # Enables 1-click manual trigger from GitHub UI anytime
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📂 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚡ Install uv Package Manager
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: 🧪 Run Ingestion & Triage (Llama 3.1 8B)
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          uv run --with openai ingest.py
+
+      - name: 📰 Generate Newsletter Digest (Llama 3.1 70B)
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          uv run --with openai newsletter.py
+
+      - name: 📦 Save Newsletter Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-newsletter-md
+          path: newsletter_*.md
