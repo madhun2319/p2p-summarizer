@@ -8,30 +8,19 @@ from concurrent.futures import ThreadPoolExecutor
 
 # ponytail: Stdlib ThreadPoolExecutor + stdlib urllib. Fast parallel processing with ZERO extra dependencies. YAGNI.
 
-def fetch_json(url, data=None):
-    headers = {'User-Agent': 'Mozilla/5.0 (P2P-Summarizer)', 'Content-Type': 'application/json'}
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode('utf-8') if data else None,
-        headers=headers,
-        method='POST' if data else 'GET'
-    )
+# ponytail: Consolidated HTTP fetch helper (JSON & text). Stdlib only.
+def fetch(url, data=None):
+    headers = {'User-Agent': 'Mozilla/5.0 (P2P-Summarizer)'}
+    if data:
+        headers['Content-Type'] = 'application/json'
+    req = urllib.request.Request(url, data=json.dumps(data).encode() if data else None, headers=headers)
     try:
-        # ponytail: 10s socket timeout prevents hanging threads.
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return json.loads(response.read().decode('utf-8'))
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode('utf-8')
+            return json.loads(raw) if resp.headers.get_content_type() == 'application/json' or (raw.strip().startswith('{') or raw.strip().startswith('[')) else raw
     except Exception as e:
         print(f"Error fetching {url}: {e}")
         return None
-
-def fetch_text(url):
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (P2P-Summarizer)'})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return response.read().decode('utf-8')
-    except Exception as e:
-        print(f"Error fetching text {url}: {e}")
-        return ""
 
 def search_recent_pdbs(days=7, limit=15):
     """Fetch PDB IDs released or deposited in the last N days."""
@@ -42,11 +31,7 @@ def search_recent_pdbs(days=7, limit=15):
         "query": {
             "type": "terminal",
             "service": "text",
-            "parameters": {
-                "attribute": "rcsb_accession_info.initial_release_date",
-                "operator": "greater_or_equal",
-                "value": date_cutoff
-            }
+            "parameters": {"attribute": "rcsb_accession_info.initial_release_date", "operator": "greater_or_equal", "value": date_cutoff}
         },
         "return_type": "entry",
         "request_options": {
@@ -55,35 +40,31 @@ def search_recent_pdbs(days=7, limit=15):
         }
     }
     
-    res = fetch_json("https://search.rcsb.org/rcsbsearch/v2/query", data=query_payload)
-    if res and "result_set" in res:
-        pdb_ids = [item["identifier"] for item in res["result_set"]]
-        print(f"✅ Found {len(pdb_ids)} PDB entries: {', '.join(pdb_ids[:5])}...")
-        return pdb_ids
-    
-    print("⚠️ No entries found with release date query, falling back to deposit date search...")
-    query_payload["query"]["parameters"]["attribute"] = "rcsb_accession_info.deposit_date"
-    res = fetch_json("https://search.rcsb.org/rcsbsearch/v2/query", data=query_payload)
-    if res and "result_set" in res:
-        return [item["identifier"] for item in res["result_set"]]
-    
+    # ponytail: Single query runner with fallback attribute mutation
+    for attr in ["rcsb_accession_info.initial_release_date", "rcsb_accession_info.deposit_date"]:
+        query_payload["query"]["parameters"]["attribute"] = attr
+        res = fetch("https://search.rcsb.org/rcsbsearch/v2/query", data=query_payload)
+        if isinstance(res, dict) and "result_set" in res:
+            pdb_ids = [item["identifier"] for item in res["result_set"]]
+            print(f"✅ Found {len(pdb_ids)} PDB entries: {', '.join(pdb_ids[:5])}...")
+            return pdb_ids
     return []
 
 def get_pdb_details(pdb_id):
     """Fetch title & PubMed abstract for a PDB ID."""
-    pdb_data = fetch_json(f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}")
-    if not pdb_data:
+    pdb_data = fetch(f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}")
+    if not isinstance(pdb_data, dict):
         return None
     
     try:
-        # ponytail: Safe nested lookup avoids KeyError exceptions.
         title = (pdb_data.get('struct') or {}).get('title', f"Structure {pdb_id}")
         pmid = (pdb_data.get('rcsb_primary_citation') or {}).get('pdbx_database_id_PubMed')
         
         abstract = ""
         if pmid:
             ncbi_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pmid}&retmode=text&rettype=abstract"
-            abstract = fetch_text(ncbi_url)
+            res = fetch(ncbi_url)
+            abstract = res if isinstance(res, str) else ""
             
         return {
             "pdb_id": pdb_id,
