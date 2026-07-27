@@ -46,7 +46,7 @@ jobs:
 
       - name: 📧 Send Newsletter via Email
         if: success()
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v4
         with:
           server_address: smtp.gmail.com
           server_port: 587
@@ -55,7 +55,6 @@ jobs:
           subject: "🧬 BioPulse AI — Proteins of the Week"
           to: ${{ secrets.EMAIL_TO }}
           from: ${{ secrets.EMAIL_FROM }}
-          content_type: text/plain
           body: |
             🧬 BioPulse AI — Weekly Protein Intelligence Digest
 
