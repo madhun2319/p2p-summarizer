@@ -17,22 +17,31 @@ def generate_70b_summary(client, pdb_item):
         context += "\n(No PubMed abstract attached to this structural deposit yet)."
     
     prompt = f"""
-You are a structural biology editor writing for a top-tier science newsletter.
+You are a senior structural biology editor writing for a top-tier biotech intelligence newsletter.
 Here is data for PDB ID {pdb_id}:
 
 {context}
 
-Make the summary highly engaging, visual, and concise for a newsletter issue.
-Do the following:
-1. Give it a catchy headline with emojis.
-2. Provide a 2-sentence TL;DR.
-3. Draw a simple ASCII art diagram showing how the proteins interact or function based on the data.
-4. Create a clean Markdown table summarizing:
-   | Attribute | Details |
-   |---|---|
-   | Main Protein | ... |
-   | Target / Function | ... |
-   | Key Discovery | ... |
+Create a sleek, modern, executive-ready summary. Do NOT use blocky ASCII box outlines (+---+). Instead, use modern unicode arrows (➔, ⚡, 🔒), blockquote cards, and clean typography.
+
+Format strictly as follows:
+
+### 🧬 [Catchy Headline with Emojis]
+`PDB: {pdb_id}` • `PMID: {pdb_item.get('pmid') or 'N/A'}`
+
+> 💡 **Executive Summary:** <2-sentence crisp TL;DR of the biological mechanism and therapeutic relevance>
+
+#### 🔄 Structural Mechanism & Pathway
+```
+[Step 1: Input/Domain] ➔ ⚡ [Step 2: Transition/Binding] ➔ 🔒 [Step 3: Outcome/Inhibition]
+```
+
+#### 📊 Intelligence Snapshot
+| Attribute | Details |
+|---|---|
+| **Target Protein** | ... |
+| **Biological Role** | ... |
+| **Therapeutic "Aha!" Discovery** | ... |
 """
     try:
         # ponytail: timeout is set on the client, not per-call. Removed invalid kwarg.
