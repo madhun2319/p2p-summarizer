@@ -17,31 +17,45 @@ def generate_70b_summary(client, pdb_item):
         context += "\n(No PubMed abstract attached to this structural deposit yet)."
     
     prompt = f"""
-You are a senior structural biology editor writing for a top-tier biotech intelligence newsletter.
-Here is data for PDB ID {pdb_id}:
+You are a Senior Scientific Editor at a premier multidisciplinary science journal (e.g., Nature, Science, Cell). Synthesize the following structural biology entry into a publication-ready Research Highlight.
 
-{context}
+DATA FOR ENTRY:
+PDB ID: {pdb_id}
+PMID: {pdb_item.get('pmid') or 'Not specified in source'}
+Title: {title}
+Abstract/Context: {abstract_text[:1500] if abstract_text else 'Not specified in source'}
 
-Create a sleek, modern, executive-ready summary. Do NOT use blocky ASCII box outlines (+---+). Instead, use modern unicode arrows (➔, ⚡, 🔒), blockquote cards, and clean typography.
+STRICT EDITORIAL DIRECTIVES:
+- Maintain an authoritative, academically rigorous, precise, and objective tone.
+- Eliminate all fluff, hype, clickbait phrasing, and emojis.
+- Zero-Inference Metadata Protocol: If a parameter is omitted from the raw source text, use "Not specified in source".
+- No ASCII art or text-based flowcharts. Conceptually describe key data/pathways in prose.
+- Non-nested, flat bullet points only.
 
-Format strictly as follows:
+EXACT REQUIRED STRUCTURAL LAYOUT:
 
-### 🧬 [Catchy Headline with Emojis]
-`PDB: {pdb_id}` • `PMID: {pdb_item.get('pmid') or 'N/A'}`
+### [Declarative, Academically Rigorous Title Focused on Primary Finding]
+*[Single high-impact italicized summary sentence contextualizing broader significance]*
 
-> 💡 **Executive Summary:** <2-sentence crisp TL;DR of the biological mechanism and therapeutic relevance>
+#### Executive Synthesis
+[Dense 3- to 4-sentence scientific abstract: 1. Overarching problem/knowledge gap; 2. Explicit credit to investigative team/lab; 3. Core methodology/platform; 4. Primary empirical finding and implications.]
 
-#### 🔄 Structural Mechanism & Pathway
-```
-[Step 1: Input/Domain] ➔ ⚡ [Step 2: Transition/Binding] ➔ 🔒 [Step 3: Outcome/Inhibition]
-```
-
-#### 📊 Intelligence Snapshot
-| Attribute | Details |
+#### Technical Specifications
+| Parameter | Specification |
 |---|---|
-| **Target Protein** | ... |
-| **Biological Role** | ... |
-| **Therapeutic "Aha!" Discovery** | ... |
+| **Scientific Domain** | Structural Biology & Molecular Biophysics |
+| **Experimental System / Platform** | [e.g., X-ray Crystallography / Cryo-EM / NMR or "Not specified in source"] |
+| **Primary Target / Phenomenon** | {title} |
+| **Key Empirical Metric** | [Resolution, affinity constant, effect size, or "Not specified in source"] |
+| **Provenance** | PDB Accession: {pdb_id} \| PubMed ID: {pdb_item.get('pmid') or 'Not specified in source'} |
+
+#### Core Scientific & Mechanistic Breakdown
+- [Granular breakdown of methodology, structural mechanics, or biochemical pathways]
+- [Specific domain interactions, active-site residues, or conformational transitions]
+- [Methodological controls, resolution limits, or experimental boundaries explicitly noted]
+
+#### Editorial Commentary & Broader Impact
+[Concise analysis of how this discovery shifts the current paradigm, resolves a debate, or opens new technological/therapeutic avenues, along with immediate next steps required for community validation.]
 """
     try:
         # ponytail: timeout is set on the client, not per-call. Removed invalid kwarg.
